@@ -1,5 +1,9 @@
-import argparse, json
-from unittest import case
+#!/usr/bin/env python3
+
+import argparse
+
+from lib.keyword_search import search_command
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -10,21 +14,15 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    data = json.load(open("data/movies.json", "r"))
-        
     match args.command:
         case "search":
-            found_movies = []
-            print(f"Searching for: {args.query}")
-            for movie in data["movies"]:
-                if args.query.lower() in movie["title"].lower():
-                    found_movies.append(movie)
-            for i, movie in enumerate(found_movies[:5]):
-                print(f"{i+1}. {movie['title']}")
-
-
+            print("Searching for:", args.query)
+            results = search_command(args.query)
+            for i, res in enumerate(results, 1):
+                print(f"{i}. {res['title']}")
         case _:
             parser.print_help()
+
 
 if __name__ == "__main__":
     main()
