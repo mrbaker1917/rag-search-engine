@@ -1,4 +1,4 @@
-from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies
+from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies, load_stop_words
 
 import string
 
@@ -21,4 +21,9 @@ def preprocess_text(text: str) -> str:
     text = text.lower()
     text = text.translate(str.maketrans("","", string.punctuation))
     arr = [w for w in text.split(" ") if w != ""]
-    return arr
+    stop_words = load_stop_words()
+    arr2 = []
+    for w in arr:
+        if w not in stop_words:
+            arr2.append(w)
+    return arr2
