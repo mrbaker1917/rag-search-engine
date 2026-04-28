@@ -7,10 +7,12 @@ def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     movies = load_movies()
     results = []
     for movie in movies:
-        preprocessed_query = preprocess_text(query)
-        preprocessed_title = preprocess_text(movie["title"])
-        if preprocessed_query in preprocessed_title:
-            results.append(movie)
+        p_query_arr = preprocess_text(query)
+        p_title_arr = preprocess_text(movie["title"])
+        for w in p_query_arr:
+            for t in p_title_arr:
+                if w in t:
+                    results.append(movie)
             if len(results) >= limit:
                 break
     return results
@@ -18,4 +20,5 @@ def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
 def preprocess_text(text: str) -> str:
     text = text.lower()
     text = text.translate(str.maketrans("","", string.punctuation))
-    return text
+    arr = [w for w in text.split(" ") if w != ""]
+    return arr
