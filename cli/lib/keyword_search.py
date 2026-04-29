@@ -1,4 +1,5 @@
 from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies, load_stop_words
+from nltk.stem import PorterStemmer
 
 import string
 
@@ -22,8 +23,10 @@ def preprocess_text(text: str) -> str:
     text = text.translate(str.maketrans("","", string.punctuation))
     arr = [w for w in text.split(" ") if w != ""]
     stop_words = load_stop_words()
-    arr2 = []
+    filtered_words = []
     for w in arr:
         if w not in stop_words:
-            arr2.append(w)
-    return arr2
+            filtered_words.append(w)
+    stemmer = PorterStemmer()
+    stemmed_words = [stemmer.stem(t) for t in filtered_words]
+    return stemmed_words
