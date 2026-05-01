@@ -3,6 +3,7 @@
 import argparse
 
 from lib.keyword_search import search_command
+from lib.inverted_index import InvertedIndex
 
 
 def main() -> None:
@@ -12,6 +13,8 @@ def main() -> None:
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
 
+    index_builder = subparsers.add_parser("build", help="Builds inverted index to speed search")
+    # index_builder.add_argument("build", type=str, help="Build inverted index")
     args = parser.parse_args()
 
     match args.command:
@@ -20,6 +23,13 @@ def main() -> None:
             results = search_command(args.query)
             for i, res in enumerate(results, 1):
                 print(f"{i}. {res['title']}")
+        case "build":
+            inv_index = InvertedIndex()
+            inv_index.build()
+            inv_index.save()
+            docs = inv_index.get_documents('merida')
+            print(f"First document for token 'merida' = {docs[0]}")
+
         case _:
             parser.print_help()
 
