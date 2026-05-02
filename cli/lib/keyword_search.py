@@ -1,7 +1,7 @@
 import os
 import pickle
 import string
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from nltk.stem import PorterStemmer
 
@@ -19,6 +19,8 @@ class InvertedIndex:
         self.docmap: dict[int, dict] = {}
         self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
+        self.term_frequencies = defaultdict(Counter)
+        self.tf_path = os.path.join(CACHE_DIR, "term_frequencies.pkl")
 
     def build(self) -> None:
         movies = load_movies()
@@ -34,19 +36,33 @@ class InvertedIndex:
             pickle.dump(self.index, f)
         with open(self.docmap_path, "wb") as f:
             pickle.dump(self.docmap, f)
+        with open(self.tf_path, "wb") as f:
+            pickle.dump(self.term_frequencies, f)
 
     def load(self) -> None:
         with open(self.index_path, "rb") as f:
             self.index = pickle.load(f)
         with open(self.docmap_path, "rb") as f:
             self.docmap = pickle.load(f)
+        with open(self.tf_path, "rb") as f:
+            self.term_frequencies = pickle.load(f)
 
     def get_documents(self, term: str) -> list[int]:
         doc_ids = self.index.get(term, set())
         return sorted(list(doc_ids))
+    
+    def get_tf(self, doc_id, term):
+        tokens = tokenize_text(term)
+        if len(tokens) != 1:
+            raise ValueError("expected a single token")
+        if self.term_frequencies.get(doc_id) is None:
+            return 0
+        return self.term_frequencies[doc_id][tokens[0]]
+        
 
     def __add_document(self, doc_id: int, text: str) -> None:
         tokens = tokenize_text(text)
+        self.term_frequencies[doc_id].update(tokens)
         for token in set(tokens):
             self.index[token].add(doc_id)
 
@@ -56,6 +72,10 @@ def build_command() -> None:
     idx.build()
     idx.save()
 
+def tf_command(doc_id, term):
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_tf(doc_id, term)
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     idx = InvertedIndex()
