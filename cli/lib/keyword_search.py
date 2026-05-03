@@ -60,12 +60,26 @@ class InvertedIndex:
             return 0
         return self.term_frequencies[doc_id][tokens[0]]
         
-
     def __add_document(self, doc_id: int, text: str) -> None:
         tokens = tokenize_text(text)
         self.term_frequencies[doc_id].update(tokens)
         for token in set(tokens):
             self.index[token].add(doc_id)
+    
+    def get_idf(self, term: str) -> float:
+        tokens = tokenize_text(term)
+        if len(tokens) != 1:
+            raise ValueError("term must be a single token")
+        token = tokens[0]
+        doc_count = len(self.docmap)
+        term_doc_count = len(self.index[token])
+        return math.log((doc_count + 1) / (term_doc_count + 1))
+
+    def get_tf_idf(self, doc_id: int, term: str) -> float:
+        tf = self.get_tf(doc_id, term)
+        idf = self.get_idf(term)
+        return tf * idf
+
 
 
 def build_command() -> None:
@@ -78,17 +92,15 @@ def tf_command(doc_id, term):
     idx.load()
     return idx.get_tf(doc_id, term)
 
-def idf_command(term) -> float:
-    tokens = tokenize_text(term)
-    if len(tokens) != 1:
-        raise ValueError("please only search for one term at a time")
-    p_term = tokens[0]
+def idf_command(term: str) -> float:
     idx = InvertedIndex()
     idx.load()
-    total_doc_count = len(idx.docmap)
-    term_match_doc_count = len(idx.get_documents(p_term))
-    return math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+    return idx.get_idf(term)
 
+def tfidf_command(doc_id: int, term: str) -> float:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_tf_idf(doc_id, term)
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     idx = InvertedIndex()
