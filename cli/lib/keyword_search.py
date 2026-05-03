@@ -1,6 +1,7 @@
 import os
 import pickle
 import string
+import math
 from collections import defaultdict, Counter
 
 from nltk.stem import PorterStemmer
@@ -76,6 +77,18 @@ def tf_command(doc_id, term):
     idx = InvertedIndex()
     idx.load()
     return idx.get_tf(doc_id, term)
+
+def idf_command(term) -> float:
+    tokens = tokenize_text(term)
+    if len(tokens) != 1:
+        raise ValueError("please only search for one term at a time")
+    p_term = tokens[0]
+    idx = InvertedIndex()
+    idx.load()
+    total_doc_count = len(idx.docmap)
+    term_match_doc_count = len(idx.get_documents(p_term))
+    return math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     idx = InvertedIndex()
