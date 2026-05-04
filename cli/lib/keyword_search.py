@@ -13,6 +13,7 @@ from .search_utils import (
     load_stopwords,
 )
 
+BM25_K1 = 1.5
 
 class InvertedIndex:
     def __init__(self) -> None:
@@ -88,6 +89,10 @@ class InvertedIndex:
         N = len(self.docmap)
         df = len(self.get_documents(t_term))
         return math.log((N - df + 0.5) / (df + 0.5) + 1)
+    
+    def get_bm25_tf(self, doc_id, term, k1=BM25_K1):
+        tf = self.get_tf(doc_id, term)
+        return (tf * (k1 + 1)) / (tf + k1)
 
 
 def build_command() -> None:
@@ -114,6 +119,11 @@ def bm25_idf_command(term: str) -> float:
     idx = InvertedIndex()
     idx.load()
     return idx.get_bm25_idf(term)
+
+def bm25_tf_command(doc_id, term, k1=BM25_K1):
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_bm25_tf(doc_id, term, k1)
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     idx = InvertedIndex()
