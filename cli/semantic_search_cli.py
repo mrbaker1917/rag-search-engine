@@ -56,7 +56,7 @@ def main() -> None:
     semantic_chunk_parser.add_argument("--max-chunk-size", type=int, default=4, help="Max sentences per chunk")
     semantic_chunk_parser.add_argument("--overlap", type=int, default=0, help="Degree of overlap")
 
-    subparsers.add_parser("embed_chunks", help="embeds chunks")
+    subparsers.add_parser("embed_chunks", help="Generate embeddings for chunked documents.")
 
     args = parser.parse_args()
 

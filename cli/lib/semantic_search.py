@@ -94,16 +94,16 @@ class ChunkedSemanticSearch(SemanticSearch):
         self.chunk_embeddings = None
         self.chunk_metadata = None
     
-    def build_chunk_embeddings(self, documents):
+    def build_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
         self.documents =  documents
-        self.document_map = {}
+        self.document_map = {doc["id'"]: doc for doc in documents}
         chunks = []
-        meta_data = []
+        chunk_metadata = []
         for idx, doc in enumerate(documents):
-            self.document_map[doc["id"]] = doc
-            if doc["description"] ==  "":
+            text = doc.get("description", "")
+            if not text.strip():
                 continue
-            sem_chunks = semantic_chunk(doc["description"], 4, 1)
+            sem_chunks = semantic_chunk(text, max_chunk_size=DEFAULT_CHUNK_SIZE, overlap=DEFAULT_OVERLAP)
             for i, s_chunk in enumerate(sem_chunks):
                 chunks.append(s_chunk)
                 d = {
@@ -111,12 +111,12 @@ class ChunkedSemanticSearch(SemanticSearch):
                     "chunk_idx": i,
                     "total_chunks": len(sem_chunks)
                 }
-                meta_data.append(d)
+                chunk_metadata.append(d)
         self.chunk_embeddings = self.model.encode(chunks, show_progress_bar=True)
-        self.chunk_metadata = meta_data
+        self.chunk_metadata = chunk_metadata
+
         os.makedirs(os.path.dirname(CHUNK_EMBEDDINGS_PATH), exist_ok=True)
         np.save(CHUNK_EMBEDDINGS_PATH, self.chunk_embeddings)
-        os.makedirs(os.path.dirname(CHUNK_METADATA_PATH), exist_ok=True)
         with open(CHUNK_METADATA_PATH, "w") as f:
             json.dump({"chunks": self.chunk_metadata, "total_chunks": len(chunks)}, f, indent=2)
         return self.chunk_embeddings
@@ -124,6 +124,7 @@ class ChunkedSemanticSearch(SemanticSearch):
     def load_or_create_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
         self.documents =  documents
         self.document_map =  {doc["id"]: doc for doc in documents}
+        
         if os.path.exists(CHUNK_EMBEDDINGS_PATH) and os.path.exists(CHUNK_METADATA_PATH):
             self.chunk_embeddings = np.load(CHUNK_EMBEDDINGS_PATH)
             with open(CHUNK_METADATA_PATH, "r") as f:
