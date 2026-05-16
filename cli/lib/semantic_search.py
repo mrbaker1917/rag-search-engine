@@ -1,6 +1,7 @@
 import os
 import re
 import numpy as np
+import json
 from sentence_transformers import SentenceTransformer
 
 from .search_utils import (
@@ -13,6 +14,8 @@ from .search_utils import (
 )
 
 MOVIE_EMBEDDINGS_PATH = os.path.join(CACHE_DIR, "movie_embeddings.npy")
+CHUNK_EMBEDDINGS_PATH = os.path.join(CACHE_DIR, "chunk_embeddings.npy")
+CHUNK_METADATA_PATH = os.path.join(CACHE_DIR, "chunk_metadata.json")
 
 
 class SemanticSearch:
@@ -85,6 +88,49 @@ class SemanticSearch:
 
         return results
 
+class ChunkedSemanticSearch(SemanticSearch):
+    def __init__(self, model_name = "all-MiniLM-L6-v2") -> None:
+        super().__init__(model_name)
+        self.chunk_embeddings = None
+        self.chunk_metadata = None
+    
+    def build_chunk_embeddings(self, documents):
+        self.documents =  documents
+        self.document_map = {}
+        chunks = []
+        meta_data = []
+        for idx, doc in enumerate(documents):
+            self.document_map[doc["id"]] = doc
+            if doc["description"] ==  "":
+                continue
+            sem_chunks = semantic_chunk(doc["description"], 4, 1)
+            for i, s_chunk in enumerate(sem_chunks):
+                chunks.append(s_chunk)
+                d = {
+                    "movie_idx": idx,
+                    "chunk_idx": i,
+                    "total_chunks": len(sem_chunks)
+                }
+                meta_data.append(d)
+        self.chunk_embeddings = self.model.encode(chunks, show_progress_bar=True)
+        self.chunk_metadata = meta_data
+        os.makedirs(os.path.dirname(CHUNK_EMBEDDINGS_PATH), exist_ok=True)
+        np.save(CHUNK_EMBEDDINGS_PATH, self.chunk_embeddings)
+        os.makedirs(os.path.dirname(CHUNK_METADATA_PATH), exist_ok=True)
+        with open(CHUNK_METADATA_PATH, "w") as f:
+            json.dump({"chunks": self.chunk_metadata, "total_chunks": len(chunks)}, f, indent=2)
+        return self.chunk_embeddings
+
+    def load_or_create_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
+        self.documents =  documents
+        self.document_map =  {doc["id"]: doc for doc in documents}
+        if os.path.exists(CHUNK_EMBEDDINGS_PATH) and os.path.exists(CHUNK_METADATA_PATH):
+            self.chunk_embeddings = np.load(CHUNK_EMBEDDINGS_PATH)
+            with open(CHUNK_METADATA_PATH, "r") as f:
+                self.chunk_metadata = json.load(f)["chunks"]
+            return self.chunk_embeddings
+
+        return self.build_chunk_embeddings(documents)
 
 def cosine_similarity(vec1, vec2):
     dot_product = np.dot(vec1, vec2)
@@ -190,3 +236,9 @@ def print_semantic_chunks(text: str, max_chunk_size: int = DEFAULT_SEMANTIC_CHUN
     print(f"Semantically chunking {len(text)} characters")
     for i, chunk in enumerate(sem_chunks, 1):
         print(f"{i}. {chunk}")
+
+def embed_chunks():
+    movies = load_movies()
+    chunk_sem_search = ChunkedSemanticSearch()
+    embeddings = chunk_sem_search.load_or_create_chunk_embeddings(movies)
+    print(f"Generated {len(embeddings)} chunked embeddings")
