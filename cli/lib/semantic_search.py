@@ -132,6 +132,31 @@ class ChunkedSemanticSearch(SemanticSearch):
             return self.chunk_embeddings
 
         return self.build_chunk_embeddings(documents)
+    
+    def search_chunks(self, query: str, limit: int = 10):
+        embedded_query = self.generate_embedding(query)
+        chunk_scores = []
+
+        for idx, chunk_emb in enumerate(self.chunk_embeddings):
+            cos_sim = cosine_similarity(embedded_query, chunk_emb)
+            mov = self.chunk_metadata[idx]
+            d = {"chunk_idx": mov["chunk_idx"], "movie_idx": mov["movie_idx"], "score": cos_sim}
+            chunk_scores.append(d)
+        movie_scores = {}
+        for score in chunk_scores:
+            if score["movie_idx"] not in movie_scores or score["score"] > movie_scores[score["movie_idx"]]:
+                movie_scores[score["movie_idx"]] = score["score"]
+        top_scores = sorted(movie_scores.items(), key=lambda item: item[1], reverse=True)[:limit]
+        top_scores_lst = []
+        for id, sc in top_scores:
+            d = {"id": self.documents[id]["id"],
+                 "title": self.documents[id]["title"],
+                 "document": self.documents[id]["description"][:100],
+                 "score": sc,
+                 "metadata": {}}
+            top_scores_lst.append(d)
+        return top_scores_lst
+
 
 def cosine_similarity(vec1, vec2):
     dot_product = np.dot(vec1, vec2)
@@ -243,3 +268,12 @@ def embed_chunks():
     chunk_sem_search = ChunkedSemanticSearch()
     embeddings = chunk_sem_search.load_or_create_chunk_embeddings(movies)
     print(f"Generated {len(embeddings)} chunked embeddings")
+
+def search_chunked(query: str, limit=DEFAULT_SEARCH_LIMIT):
+    movies = load_movies()
+    chunk_sem_search = ChunkedSemanticSearch()
+    chunk_sem_search.load_or_create_chunk_embeddings(movies)
+    results = chunk_sem_search.search_chunks(query, limit)
+    for i, r in enumerate(results, 1):
+        print(f"\n{i}. {r["title"]} (score: {r["score"]:.4f})")
+        print(f"   {r["document"]}...")
