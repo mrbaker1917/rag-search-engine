@@ -8,6 +8,7 @@ api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     raise RuntimeError("GEMINI_API_KEY environment variable not set")
 
+
 def main() -> None:
     client = genai.Client(api_key=api_key)
     model="gemma-4-31b-it"
@@ -20,3 +21,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    
