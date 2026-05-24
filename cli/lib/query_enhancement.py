@@ -53,3 +53,26 @@ User query: "{query}"
     print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
     rewritten = (response.text or "").strip().strip('"')
     return rewritten if rewritten else query
+
+def expand_query(query: str) -> str:
+    client = genai.Client(api_key=api_key)
+    model="gemma-4-31b-it"
+    contents=f"""Expand the user-provided movie search query below with related terms.
+
+Add synonyms and related concepts that might appear in movie descriptions.
+Keep expansions relevant and focused.
+Output only the additional terms; they will be appended to the original query.
+
+Examples:
+- "scary bear movie" -> "scary horror grizzly bear movie terrifying film"
+- "action movie with bear" -> "action thriller bear chase fight adventure"
+- "comedy with bear" -> "comedy funny bear humor lighthearted"
+
+User query: "{query}"
+"""
+    response = client.models.generate_content(model=model, contents=contents, config=None)
+    assert response.usage_metadata is not None
+    print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+    print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+    rewritten = (response.text or "").strip().strip('"')
+    return f"{query} {rewritten}".strip()

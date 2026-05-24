@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from lib.hybrid_search import normalize_scores, weighted_search, rrf_search
-from lib.query_enhancement import check_query, rewrite_query
+from lib.query_enhancement import check_query, rewrite_query, expand_query
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -19,7 +19,7 @@ def main() -> None:
     rrf_parser.add_argument("query", type=str, help="Query term to search in database comparing search rankings")
     rrf_parser.add_argument("-k", type=int, default=60, help="k value to compare rankings")
     rrf_parser.add_argument("--limit", type=int, default=5, help="Limits number of search results.")
-    rrf_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite"], help="Queryenhancement method")
+    rrf_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Queryenhancement method")
     args = parser.parse_args()
 
     match args.command:
@@ -32,6 +32,10 @@ def main() -> None:
                 rewritten_query = rewrite_query(args.query)
                 print(f"Enhanced query ({args.enhance}): '{args.query}' -> {rewritten_query}\n")
                 rrf_search(rewritten_query, args.k, args.limit)
+            elif args.enhance == "expand":
+                expanded_query = expand_query(args.query)
+                print(f"Enhanced query ({args.enhance}): '{args.query}' -> {expanded_query}\n")
+                rrf_search(expanded_query, args.k, args.limit)
             else:
                 rrf_search(args.query, args.k, args.limit)
         case "weighted-search":
