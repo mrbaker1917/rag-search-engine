@@ -1,9 +1,15 @@
 import os
+from google import genai
+import time
 
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
 from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies
 
+
+api_key = os.environ.get("GEMINI_API_KEY")
+if not api_key:
+    raise RuntimeError("GEMINI_API_KEY environment variable not set")
 
 class HybridSearch:
     def __init__(self, documents):
@@ -126,6 +132,43 @@ def weighted_search(query, alpha=0.5, limit=5):
             f"{i}. {r[1]['title']}\n Hybrid Score: {r[1]['Hybrid']:.3f}\n BM25: {r[1]['BM25']:.3f}, Semantic: {r[1]['Semantic']:.3f}\n {r[1]['description'][:100]}"
         )
 
+def rrf_search_rerank(query, k, limit):
+    movies = load_movies()
+    hybrid_search = HybridSearch(movies)
+    results = hybrid_search.rrf_search(query, k, limit)
+    client = genai.Client(api_key=api_key)
+    model="gemma-4-31b-it"
+    new_results = []
+    for i, r in enumerate(results, 1):
+        contents=f"""Rate how well this movie matches the search query.
+
+Query: "{query}"
+Movie: {r[1]["title"]} - {r[1]["description"]}
+
+Consider:
+- Direct relevance to query
+- User intent (what they're looking for)
+- Content appropriateness
+
+Rate 0-10 (10 = perfect match).
+Output ONLY the number in your response, no other text or explanation.
+
+Score:"""
+        response = client.models.generate_content(model=model, contents=contents, config=None)
+        new_results.append((float(response.text), r[1]))
+        if i < len(results)-1:
+            time.sleep(3)
+    # print(new_results)
+    ranked_llm_scores = sorted(new_results, key=lambda t: t[0], reverse=True)[:int(limit/5)]
+    print("Re-ranking top 3 results using individual method...")
+    print("Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):")
+    
+    for j, t in enumerate(ranked_llm_scores, 1):
+        print(f"{j}. {t[1]["title"]}")
+        print(f"Re-rank Score: {float(t[0]):.3f}")
+        print(f"RRF Score: {t[1]['rrf']:.3f}")
+        print(f"BM25: {t[1]['BM25']:.3f}, Semantic: {t[1]['Semantic']:.3f}") 
+        print(f"{t[1]['description'][:100]}")
 
 def rrf_search(query, k, limit):
     movies = load_movies()
