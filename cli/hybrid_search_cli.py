@@ -2,7 +2,12 @@ import argparse
 from dotenv import load_dotenv
 load_dotenv()
 
-from lib.hybrid_search import normalize_scores, weighted_search, rrf_search, rrf_search_rerank
+from lib.hybrid_search import (
+    normalize_scores, 
+    weighted_search, 
+    rrf_search, 
+    rrf_search_rerank,
+    rrf_rerank_batch)
 from lib.query_enhancement import check_query, rewrite_query, expand_query
 
 def main() -> None:
@@ -20,7 +25,7 @@ def main() -> None:
     rrf_parser.add_argument("-k", type=int, default=60, help="k value to compare rankings")
     rrf_parser.add_argument("--limit", type=int, default=5, help="Limits number of search results.")
     rrf_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement methods")
-    rrf_parser.add_argument("--rerank-method", type=str, choices=["individual"], help="Reranks from a limited list more thoroughly.")
+    rrf_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch"], help="Reranks from a limited list more thoroughly.")
     args = parser.parse_args()
 
     match args.command:
@@ -39,6 +44,8 @@ def main() -> None:
                 rrf_search(expanded_query, args.k, args.limit)
             elif args.rerank_method == "individual":
                 rrf_search_rerank(args.query, args.k, args.limit*5)
+            elif args.rerank_method == "batch":
+                rrf_rerank_batch(args.query, args.k, args.limit*5)
             else:
                 rrf_search(args.query, args.k, args.limit)
         case "weighted-search":

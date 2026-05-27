@@ -1,6 +1,7 @@
 import os
 from google import genai
 import time
+import json
 
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
@@ -178,3 +179,41 @@ def rrf_search(query, k, limit):
         print(
             f"{i}. {r[1]['title']}\n RRF Score: {r[1]['rrf']:.3f}\n BM25: {r[1]['BM25']:.3f}, Semantic: {r[1]['Semantic']:.3f}\n {r[1]['description'][:100]}"
         )
+
+def rrf_rerank_batch(query, k, limit):
+    movies = load_movies()
+    hybrid_search = HybridSearch(movies)
+    doc_list = hybrid_search.rrf_search(query, k, limit)
+    
+    contents = f"""Rank the movies listed below by relevance to the following search query.
+
+Query: "{query}"
+
+Movies:
+{doc_list}
+
+Return the movie IDs (the first element in each tuple in doc_list_str) in order of relevance, best match first.
+
+Your response must be a raw JSON array of integers.
+Do not wrap the JSON in Markdown. Do not use a ```json code block.
+Do not include any explanatory text.
+
+For example:
+[75, 12, 34, 2, 1]
+
+Ranking:"""
+    client = genai.Client(api_key=api_key)
+    model="gemma-4-31b-it"
+    json_response = client.models.generate_content(model=model, contents=contents, config=None)
+    doc_dict = {doc[0]: doc[1] for doc in doc_list}
+    response = json.loads(json_response.text)
+    # print(response)
+    # print(f"Length of response: {len(response)}")
+    print("Re-ranking top 3 results using batch method...")
+    print("Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):\n")
+    for i, id in enumerate(response[:int(limit/5)], 1):
+        movie = doc_dict[id]
+        print(f"{i}. {movie['title']}")
+        print(f"   Re-rank Rank: {i}")
+        print(f"   BM25 Rank: {movie['BM25']}, Semantic Rank: {movie['Semantic']}")
+        print(f"   {movie['description'][:100]}...")
