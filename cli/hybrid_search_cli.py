@@ -7,7 +7,9 @@ from lib.hybrid_search import (
     weighted_search, 
     rrf_search, 
     rrf_search_rerank,
-    rrf_rerank_batch)
+    rrf_rerank_batch,
+    rrf_cross_encode
+)
 from lib.query_enhancement import check_query, rewrite_query, expand_query
 
 def main() -> None:
@@ -25,7 +27,7 @@ def main() -> None:
     rrf_parser.add_argument("-k", type=int, default=60, help="k value to compare rankings")
     rrf_parser.add_argument("--limit", type=int, default=5, help="Limits number of search results.")
     rrf_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement methods")
-    rrf_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch"], help="Reranks from a limited list more thoroughly.")
+    rrf_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", "cross_encoder"], help="Reranks from a limited list more thoroughly.")
     args = parser.parse_args()
 
     match args.command:
@@ -46,6 +48,8 @@ def main() -> None:
                 rrf_search_rerank(args.query, args.k, args.limit*5)
             elif args.rerank_method == "batch":
                 rrf_rerank_batch(args.query, args.k, args.limit*5)
+            elif args.rerank_method == "cross_encoder":
+                rrf_cross_encode(args.query, args.k, args.limit)
             else:
                 rrf_search(args.query, args.k, args.limit)
         case "weighted-search":

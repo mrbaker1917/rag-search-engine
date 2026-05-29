@@ -2,6 +2,7 @@ import os
 from google import genai
 import time
 import json
+from sentence_transformers import CrossEncoder
 
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
@@ -207,13 +208,36 @@ Ranking:"""
     json_response = client.models.generate_content(model=model, contents=contents, config=None)
     doc_dict = {doc[0]: doc[1] for doc in doc_list}
     response = json.loads(json_response.text)
-    # print(response)
-    # print(f"Length of response: {len(response)}")
-    print("Re-ranking top 3 results using batch method...")
+
+    print(f"Re-ranking top {limit} results using batch method...")
     print("Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):\n")
     for i, id in enumerate(response[:int(limit/5)], 1):
         movie = doc_dict[id]
-        print(f"{i}. {movie['title']}")
+        print(f"{i}. {movie['title'].upper()}")
         print(f"   Re-rank Rank: {i}")
         print(f"   BM25 Rank: {movie['BM25']}, Semantic Rank: {movie['Semantic']}")
-        print(f"   {movie['description'][:100]}...")
+        print(f"   {movie['description'][:100]}...\n\n")
+
+def rrf_cross_encode(query, k, limit):
+    movies = load_movies()
+    hybrid_search = HybridSearch(movies)
+    doc_list = hybrid_search.rrf_search(query, k, limit)
+    pairs = []
+
+    for doc in doc_list:
+        pairs.append([query, f"{doc[1]['title']} - {doc[1]['description']}"])
+    cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+    scores = cross_encoder.predict(pairs)
+    docs_scores = sorted(zip(doc_list, scores), key=lambda d : d[1], reverse=True)
+
+    print(f"Re-ranking top {limit} results using cross_encoder method...")
+    print(f"Reciprocal Rank Fusion Results for {query}, (k=60):")
+    for i, t in enumerate(docs_scores, 1):
+        doc = t[0][1]
+        print(f"\n{i}. {doc['title']}")
+        print(f"     Cross Encoder Score: {t[1]:.3f}")
+        print(f"     RRF Score: {doc['rrf']}")
+        print(f"     BM25 Rank: {doc['BM25']:.3f}, Semantic Rank: {doc['Semantic']}")
+        print(f"     {doc['description'][:100]}")
+
+        
