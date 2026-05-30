@@ -242,14 +242,16 @@ def rrf_search_command(
     enhanced_query = None
     if enhance:
         enhanced_query = enhance_query(query, method=enhance)
+        print(f"Enhanced query: {enhanced_query}")
         query = enhanced_query
 
     search_limit = limit * SEARCH_MULTIPLIER if rerank_method else limit
     results = searcher.rrf_search(query, k, search_limit)
-
+    print(f"rrf_search results: {results}")
     reranked = False
     if rerank_method:
         results = rerank(query, results, method=rerank_method, limit=limit)
+        print(f"reranked results: {results}")
         reranked = True
 
     return {
