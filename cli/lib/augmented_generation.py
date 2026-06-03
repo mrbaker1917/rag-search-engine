@@ -99,7 +99,7 @@ def generate_citations(search_results, query, limit):
     context = ""
     for result in search_results[:limit]:
         context += f"{result['title']}: {result['document']}\n\n"
-    prompt = prompt = f"""Answer the query below and give information based on the provided documents.
+    prompt = f"""Answer the query below and give information based on the provided documents.
     The answer should be tailored to users of Hoopla, a movie streaming service.
     If not enough information is available to provide a good answer, say so, but give the best answer possible while citing the sources available.
 
@@ -140,3 +140,43 @@ def citations_command(query, limit=DEFAULT_SEARCH_LIMIT):
         "answer": answer,
     }
 
+def question_command(query, limit=DEFAULT_SEARCH_LIMIT):
+    movies = load_movies()
+    hybrid_search = HybridSearch(movies)
+    search_results = hybrid_search.rrf_search(query, k=RRF_K, limit=limit * SEARCH_MULTIPLIER)
+
+    if not search_results:
+        return {
+            "query": query,
+            "search_results": [],
+            "error": "No results found.",
+        }
+    
+    answer = generate_answers(search_results, query, limit)
+
+    return {
+        "query": query,
+        "search_results": search_results[:limit],
+        "answer": answer,
+    }
+
+def generate_answers(search_results, query, limit):
+    context = ""
+    for result in search_results[:limit]:
+        context += f"{result['title']}: {result['document']}\n\n"
+    prompt = f"""Answer the user's question based on the provided movies that are available on Hoopla, a streaming service.
+
+Question: {query}
+
+Documents:
+{context}
+
+Instructions:
+- Answer questions directly and concisely
+- Be casual and conversational
+- Don't be cringe or hype-y
+- Talk like a normal person would in a chat conversation
+
+Answer:"""
+    response = client.models.generate_content(model=model, contents=prompt)
+    return (response.text or "").strip()

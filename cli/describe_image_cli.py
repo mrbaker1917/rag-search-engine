@@ -1,27 +1,12 @@
 import argparse
 
-from lib.augmented_generation import rag_command, summarize_command, citations_command, question_command
+from lib.describe_image import describe_command
 
 
 def main() -> None:
      parser = argparse.ArgumentParser(description="Retrieval Augmented Generation CLI")
      subparsers = parser.add_subparsers(dest="command", help="Available commands")
-     rag_parser = subparsers.add_parser(
-        "rag", help="Perform RAG (search + generate answer)"
-    )
-     rag_parser.add_argument("query", type=str, help="Search query for RAG")
-     summarize_parser = subparsers.add_parser(
-         "summarize", help="Generates multi-document summary."
-     )
-     summarize_parser.add_argument("query", type=str, help="Terms to search and summarize")
-     summarize_parser.add_argument("--limit", type=int, default=5, help="Limit the number of search results to summarize.")
-
-     citations_parser = subparsers.add_parser("citations", help="Provides citations for claims in results.")
-     citations_parser.add_argument("query", type=str, help="Terms to search for citations")
-     citations_parser.add_argument("--limit", type=int, default=5, help="Limit the number of search results with citations.")
-     question_parser = subparsers.add_parser("question", help="Answer a question with citations.")
-     question_parser.add_argument("query", type=str, help="Question to answer with citations")
-     question_parser.add_argument("--limit", type=int, default=5, help="Limit the number of search results with citations.")
+     describe_parser = subparsers.add_parser("describe", help="Describe an image using the Gemini API")
      
      args = parser.parse_args()
      
