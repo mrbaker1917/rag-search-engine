@@ -1,9 +1,13 @@
 from PIL import Image
 from sentence_transformers import SentenceTransformer
+from lib.search_utils import load_movies
 
 class MultimodalSearch:
-    def __init__(self, model_name='clip-ViT-B-32'):
+    def __init__(self,  documents: list[object] | None = None, model_name='clip-ViT-B-32'):
         self.model = SentenceTransformer(model_name)
+        self.documents = documents or []
+        self.texts = [f"{doc['title']}: {doc['description']}" for doc in self.documents]
+        self.texts_embeddings = self.model.encode(self.texts, show_progress_bar=True)
 
     def encode_text(self, text):
         return self.model.encode(text)
@@ -12,20 +16,11 @@ class MultimodalSearch:
         image = Image.open(image_path).convert('RGB')
         return self.model.encode(image)
 
-    def search(self, query, data):
-        query_embedding = self.encode_text(query)
-        results = []
-        for item in data:
-            if 'text' in item:
-                item_embedding = self.encode_text(item['text'])
-            elif 'image' in item:
-                item_embedding = self.encode_image(item['image'])
-            else:
-                continue
-            similarity = self.cosine_similarity(query_embedding, item_embedding)
-            results.append((item, similarity))
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results
+    def search_with_image(self, image_path):
+        image_embedding = self.encode_image(image_path)
+        similarities = [self.cosine_similarity(image_embedding, text_emb) for text_emb in self.texts_embeddings]
+        ranked_docs = sorted(zip(self.documents, similarities), key=lambda x: x[1], reverse=True)
+        return [{"id:": doc["id"], "title": doc["title"], "description": doc["description"], "similarity": sim} for doc, sim in ranked_docs][:5]
 
     @staticmethod
     def cosine_similarity(vec1, vec2):
@@ -40,3 +35,9 @@ def verify_image_embedding(image_path):
     search = MultimodalSearch()
     embedding = search.encode_image(image_path)
     print(f"Embedding shape: {embedding.shape[0]} dimensions")
+
+def image_search_command(image_path):
+    movies = load_movies()
+    search = MultimodalSearch(documents=movies)
+    results = search.search_with_image(image_path)
+    return results
